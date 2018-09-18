@@ -1,0 +1,30 @@
+pipeline {
+	agent { label 'master' }
+	environment { 
+     	//colocar aqui as variáveis de ambiente e credenciais para acesso
+     	USER_CREDENTIALS = credentials('d7b9efce-307d-44b3-8c26-3aa64a995828')
+    }
+    parameters {
+        //string(name: 'Nome', defaultValue: 'audio.wav', description: 'Insira um nome para o Audio')
+        validatingString(defaultValue: 'audio.wav', description: 'Insira um nome para o Audio', failedValidationMessage: 'Inserir um nome que não tenha espaços nem characteres especiais', name: 'Nome', regex: '[^!@#$%^&*(),.?:{}|<> ]{3,50}')
+    }
+	stages {
+	    stage("upload") {
+	        steps {
+                script{
+                    def inputFile = input message: 'Envie o audio', parameters: [file(name: 'audio.wav')]
+                    sh "cp ${inputFile} /tmp/"
+                    sh "smbclient -U '${USER_CREDENTIALS_USR}%${USER_CREDENTIALS_PSW}' '\\\\172.19.3.12\\Contigencia' -c 'put /tmp/audio.wav ${params.Nome}'"
+                    sh "smbclient -U '${USER_CREDENTIALS_USR}%${USER_CREDENTIALS_PSW}' '\\\\172.19.3.13\\Contigencia' -c 'put /tmp/audio.wav ${params.Nome}'"
+                    sh "smbclient -U '${USER_CREDENTIALS_USR}%${USER_CREDENTIALS_PSW}' '\\\\172.19.3.18\\Contigencia' -c 'put /tmp/audio.wav ${params.Nome}'"
+                    sh "rm -f /tmp/audio.wav"
+                }
+	        }
+        }
+    }
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
